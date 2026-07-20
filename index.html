@@ -76,6 +76,7 @@
     <button class="export-btn" id="adminLoginBtn">Intră</button>
   </div>
   <div id="adminPanel" class="hidden">
+    <select id="monthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1rem; margin-bottom:12px;"></select>
     <div style="overflow-x:auto;">
       <table id="adminTable">
         <thead><tr><th>Data</th><th>Sosire</th><th>Plecare</th><th>Total ore</th></tr></thead>
@@ -91,6 +92,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+window.addEventListener('error', (e) => {
+  const m = document.getElementById('msg');
+  if (m) { m.textContent = '⚠️ Eroare: ' + e.message; m.style.color = '#ef4444'; }
+});
+
 // ================== CONFIGURARE FIREBASE ==================
 // Înlocuiește cu config-ul din proiectul TĂU Firebase nou
 const firebaseConfig = {
@@ -108,9 +114,6 @@ const EMPLOYEE_NAME = "Cristina"; // schimbă cu numele angajatului
 
 document.getElementById('welcome').textContent = `Bine ai venit, ${EMPLOYEE_NAME}!`;
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
 function pad(n){ return n.toString().padStart(2,'0'); }
 function todayId(){
   const d = new Date();
@@ -121,12 +124,21 @@ function timeNow(){
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// ceas live
+// ceas live - pornește independent, chiar dacă Firebase are probleme
 setInterval(()=>{
   const d = new Date();
   document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }, 1000);
 document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('ro-RO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+let db;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch(e) {
+  document.getElementById('msg').textContent = '⚠️ Eroare Firebase: ' + e.message;
+  document.getElementById('msg').style.color = '#ef4444';
+}
 
 const btnSosire = document.getElementById('btnSosire');
 const btnPlecare = document.getElementById('btnPlecare');
@@ -182,6 +194,7 @@ document.getElementById('adminLoginBtn').addEventListener('click', async () => {
 });
 
 let currentRows = [];
+let allRows = [];
 
 function calcOre(sosire, plecare){
   if (!sosire || !plecare) return '';
@@ -193,19 +206,47 @@ function calcOre(sosire, plecare){
   return `${h}h ${pad(m)}m`;
 }
 
+function monthOf(dataStr){ return dataStr ? dataStr.slice(0,7) : ''; } // YYYY-MM
+
+function monthLabel(ym){
+  const [y,m] = ym.split('-').map(Number);
+  const d = new Date(y, m-1, 1);
+  return d.toLocaleDateString('ro-RO', { month:'long', year:'numeric' });
+}
+
 async function loadAdminData(){
-  const snap = await db.collection('pontaj').orderBy('data', 'desc').get();
-  currentRows = [];
-  const tbody = document.querySelector('#adminTable tbody');
-  tbody.innerHTML = '';
+  const snap = await db.collection('pontaj').get();
+  allRows = [];
   snap.forEach(doc => {
     const d = doc.data();
-    currentRows.push({ data: d.data || doc.id, sosire: d.sosire || '', plecare: d.plecare || '' });
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${d.data||doc.id}</td><td>${d.sosire||'—'}</td><td>${d.plecare||'—'}</td><td>${calcOre(d.sosire,d.plecare)}</td>`;
-    tbody.appendChild(tr);
+    allRows.push({ data: d.data || doc.id, sosire: d.sosire || '', plecare: d.plecare || '' });
   });
+  allRows.sort((a, b) => b.data.localeCompare(a.data)); // descrescator, cele mai noi primele
+
+  const months = [...new Set(allRows.map(r => monthOf(r.data)))].filter(Boolean).sort().reverse();
+  const select = document.getElementById('monthFilter');
+  const prevSelected = select.value;
+  select.innerHTML = months.map(ym => `<option value="${ym}">${monthLabel(ym)}</option>`).join('');
+  if (months.length === 0) {
+    select.innerHTML = '<option value="">Fără date</option>';
+  } else if (months.includes(prevSelected)) {
+    select.value = prevSelected;
+  } else {
+    select.value = monthOf(todayId()) && months.includes(monthOf(todayId())) ? monthOf(todayId()) : months[0];
+  }
+  renderTable();
 }
+
+function renderTable(){
+  const ym = document.getElementById('monthFilter').value;
+  currentRows = allRows.filter(r => monthOf(r.data) === ym);
+  const tbody = document.querySelector('#adminTable tbody');
+  tbody.innerHTML = currentRows.map(r =>
+    `<tr><td>${r.data}</td><td>${r.sosire||'—'}</td><td>${r.plecare||'—'}</td><td>${calcOre(r.sosire,r.plecare)}</td></tr>`
+  ).join('');
+}
+
+document.getElementById('monthFilter').addEventListener('change', renderTable);
 
 document.getElementById('resetAll').addEventListener('click', async () => {
   if (!confirm('Sigur ștergi TOT istoricul de pontaj? Nu se poate anula.')) return;
@@ -217,6 +258,7 @@ document.getElementById('resetAll').addEventListener('click', async () => {
   await loadAdminData();
   await refreshToday();
 });
+document.getElementById('downloadExcel').addEventListener('click', () => {
   const rows = currentRows.map(r => ({
     'Data': r.data,
     'Ora intrare': r.sosire,
@@ -227,7 +269,8 @@ document.getElementById('resetAll').addEventListener('click', async () => {
   ws['!cols'] = [{wch:14},{wch:14},{wch:14},{wch:12}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pontaj');
-  XLSX.writeFile(wb, `pontaj_${todayId()}.xlsx`);
+  const ym = document.getElementById('monthFilter').value || todayId().slice(0,7);
+  XLSX.writeFile(wb, `pontaj_${ym}.xlsx`);
 });
 </script>
 </body>

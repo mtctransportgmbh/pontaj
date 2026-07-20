@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pontaj</title>
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Pontaj%22,%22display%22:%22standalone%22}">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; color: #f1f5f9; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; padding: 24px 16px;
+  }
+  .welcome { font-size: 1.3rem; font-weight: 600; color: #38bdf8; margin-top: 8px; }
+  .clock { font-size: 3rem; font-weight: 700; margin-top: 4px; letter-spacing: 1px; }
+  .date { font-size: 1.1rem; color: #94a3b8; margin-bottom: 32px; text-transform: capitalize; }
+  .card {
+    width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px;
+    padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+  }
+  .btn {
+    width: 100%; padding: 28px; border: none; border-radius: 16px; font-size: 1.4rem;
+    font-weight: 700; margin-bottom: 16px; cursor: pointer; transition: transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-sosire { background: #22c55e; color: #052e16; }
+  .btn-plecare { background: #ef4444; color: #450a0a; }
+  .btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  .status-line {
+    display: flex; justify-content: space-between; padding: 10px 4px;
+    border-top: 1px solid #334155; font-size: 1rem;
+  }
+  .status-line span:last-child { font-weight: 700; color: #38bdf8; }
+  .msg { text-align: center; margin-top: 16px; color: #94a3b8; font-size: .9rem; }
+  .admin-link {
+    margin-top: 28px; color: #475569; font-size: .8rem; background: none;
+    border: none; text-decoration: underline; cursor: pointer;
+  }
+  .hidden { display: none; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: .85rem; }
+  th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #334155; }
+  th { color: #94a3b8; font-weight: 600; }
+  .export-btn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px; background: #38bdf8;
+    color: #082f49; font-weight: 700; font-size: 1rem; margin-top: 16px; cursor: pointer;
+  }
+  input[type=password] {
+    width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #334155;
+    background: #0f172a; color: #f1f5f9; font-size: 1rem; margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="welcome" id="welcome">Bine ai venit!</div>
+<div class="clock" id="clock">--:--:--</div>
+<div class="date" id="dateLabel">-</div>
+
+<div class="card" id="mainCard">
+  <button class="btn btn-sosire" id="btnSosire">✅ SOSIRE</button>
+  <button class="btn btn-plecare" id="btnPlecare" disabled>🚪 PLECARE</button>
+
+  <div class="status-line"><span>Sosire azi:</span><span id="valSosire">—</span></div>
+  <div class="status-line"><span>Plecare azi:</span><span id="valPlecare">—</span></div>
+
+  <div class="msg" id="msg"></div>
+</div>
+
+<button class="admin-link" id="openAdmin">admin</button>
+
+<div class="card hidden" id="adminCard" style="max-width:640px; margin-top:16px;">
+  <div id="adminLogin">
+    <input type="password" id="adminPass" placeholder="Parolă admin">
+    <button class="export-btn" id="adminLoginBtn">Intră</button>
+  </div>
+  <div id="adminPanel" class="hidden">
+    <div style="overflow-x:auto;">
+      <table id="adminTable">
+        <thead><tr><th>Data</th><th>Sosire</th><th>Plecare</th><th>Total ore</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <button class="export-btn" id="downloadExcel">⬇️ Descarcă Excel</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ================== CONFIGURARE FIREBASE ==================
+// Înlocuiește cu config-ul din proiectul TĂU Firebase nou
+const firebaseConfig = {
+  apiKey: "AIzaSyCRX1FBwlMLrHWwYARLmfybbE8m4S13koU",
+  authDomain: "pontaj-mtc.firebaseapp.com",
+  projectId: "pontaj-mtc",
+  storageBucket: "pontaj-mtc.firebasestorage.app",
+  messagingSenderId: "1025906954415",
+  appId: "1:1025906954415:web:de3d5f50f749041b4a845a",
+  measurementId: "G-X6DR1H1VV3"
+};
+const ADMIN_PASSWORD = "060823"; // schimbă dacă vrei altă parolă
+const EMPLOYEE_NAME = "Cristina"; // schimbă cu numele angajatului
+// =============================================================
+
+document.getElementById('welcome').textContent = `Bine ai venit, ${EMPLOYEE_NAME}!`;
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function pad(n){ return n.toString().padStart(2,'0'); }
+function todayId(){
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+function timeNow(){
+  const d = new Date();
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// ceas live
+setInterval(()=>{
+  const d = new Date();
+  document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}, 1000);
+document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('ro-RO', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+const btnSosire = document.getElementById('btnSosire');
+const btnPlecare = document.getElementById('btnPlecare');
+const valSosire = document.getElementById('valSosire');
+const valPlecare = document.getElementById('valPlecare');
+const msg = document.getElementById('msg');
+
+async function refreshToday(){
+  const doc = await db.collection('pontaj').doc(todayId()).get();
+  const data = doc.exists ? doc.data() : {};
+  valSosire.textContent = data.sosire || '—';
+  valPlecare.textContent = data.plecare || '—';
+  btnSosire.disabled = !!data.sosire;
+  btnPlecare.disabled = !data.sosire || !!data.plecare;
+  if (data.sosire && data.plecare) {
+    msg.textContent = 'Pontaj complet pentru azi. Pe mâine! 👋';
+  } else if (data.sosire) {
+    msg.textContent = 'Sosire înregistrată. Apasă Plecare la final.';
+  } else {
+    msg.textContent = '';
+  }
+}
+
+btnSosire.addEventListener('click', async () => {
+  btnSosire.disabled = true;
+  try {
+    await db.collection('pontaj').doc(todayId()).set({ sosire: timeNow(), data: todayId() }, { merge: true });
+    await refreshToday();
+  } catch(e) { alert('Eroare: ' + e.message); btnSosire.disabled = false; }
+});
+
+btnPlecare.addEventListener('click', async () => {
+  btnPlecare.disabled = true;
+  try {
+    await db.collection('pontaj').doc(todayId()).set({ plecare: timeNow() }, { merge: true });
+    await refreshToday();
+  } catch(e) { alert('Eroare: ' + e.message); btnPlecare.disabled = false; }
+});
+
+refreshToday();
+
+// ================== ADMIN ==================
+document.getElementById('openAdmin').addEventListener('click', () => {
+  document.getElementById('adminCard').classList.toggle('hidden');
+});
+
+document.getElementById('adminLoginBtn').addEventListener('click', async () => {
+  const val = document.getElementById('adminPass').value;
+  if (val !== ADMIN_PASSWORD) { alert('Parolă greșită'); return; }
+  document.getElementById('adminLogin').classList.add('hidden');
+  document.getElementById('adminPanel').classList.remove('hidden');
+  await loadAdminData();
+});
+
+let currentRows = [];
+
+function calcOre(sosire, plecare){
+  if (!sosire || !plecare) return '';
+  const [h1,m1,s1] = sosire.split(':').map(Number);
+  const [h2,m2,s2] = plecare.split(':').map(Number);
+  let mins = (h2*60+m2) - (h1*60+m1);
+  if (mins < 0) mins += 24*60;
+  const h = Math.floor(mins/60), m = mins%60;
+  return `${h}h ${pad(m)}m`;
+}
+
+async function loadAdminData(){
+  const snap = await db.collection('pontaj').orderBy('data', 'desc').get();
+  currentRows = [];
+  const tbody = document.querySelector('#adminTable tbody');
+  tbody.innerHTML = '';
+  snap.forEach(doc => {
+    const d = doc.data();
+    currentRows.push({ data: d.data || doc.id, sosire: d.sosire || '', plecare: d.plecare || '' });
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.data||doc.id}</td><td>${d.sosire||'—'}</td><td>${d.plecare||'—'}</td><td>${calcOre(d.sosire,d.plecare)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('downloadExcel').addEventListener('click', () => {
+  const rows = currentRows.map(r => ({
+    'Data': r.data,
+    'Ora intrare': r.sosire,
+    'Ora iesire': r.plecare,
+    'Total ore': calcOre(r.sosire, r.plecare)
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:14},{wch:14},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pontaj');
+  XLSX.writeFile(wb, `pontaj_${todayId()}.xlsx`);
+});
+</script>
+</body>
+</html>

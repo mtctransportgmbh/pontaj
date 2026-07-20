@@ -83,6 +83,7 @@
       </table>
     </div>
     <button class="export-btn" id="downloadExcel">⬇️ Descarcă Excel</button>
+    <button class="export-btn" id="resetAll" style="background:#ef4444; color:#450a0a;">🗑️ Șterge tot istoricul</button>
   </div>
 </div>
 
@@ -117,7 +118,7 @@ function todayId(){
 }
 function timeNow(){
   const d = new Date();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // ceas live
@@ -184,8 +185,8 @@ let currentRows = [];
 
 function calcOre(sosire, plecare){
   if (!sosire || !plecare) return '';
-  const [h1,m1,s1] = sosire.split(':').map(Number);
-  const [h2,m2,s2] = plecare.split(':').map(Number);
+  const [h1,m1] = sosire.split(':').map(Number);
+  const [h2,m2] = plecare.split(':').map(Number);
   let mins = (h2*60+m2) - (h1*60+m1);
   if (mins < 0) mins += 24*60;
   const h = Math.floor(mins/60), m = mins%60;
@@ -206,7 +207,16 @@ async function loadAdminData(){
   });
 }
 
-document.getElementById('downloadExcel').addEventListener('click', () => {
+document.getElementById('resetAll').addEventListener('click', async () => {
+  if (!confirm('Sigur ștergi TOT istoricul de pontaj? Nu se poate anula.')) return;
+  const snap = await db.collection('pontaj').get();
+  const batch = db.batch();
+  snap.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+  alert('Tot istoricul a fost șters.');
+  await loadAdminData();
+  await refreshToday();
+});
   const rows = currentRows.map(r => ({
     'Data': r.data,
     'Ora intrare': r.sosire,

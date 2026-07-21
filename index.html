@@ -68,7 +68,21 @@
   <div class="msg" id="msg"></div>
 </div>
 
+<button class="admin-link" id="openMyHours" style="color:#38bdf8; text-decoration:none; font-size:.95rem; margin-top:16px;">📊 Vezi orele mele</button>
 <button class="admin-link" id="openAdmin">admin</button>
+
+<div class="card hidden" id="myHoursCard" style="max-width:640px; margin-top:16px;">
+  <select id="myMonthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1rem; margin-bottom:12px;"></select>
+  <div style="overflow-x:auto;">
+    <table id="myTable">
+      <thead><tr><th>Data</th><th>Sosire</th><th>Plecare</th><th>Total ore</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="status-line" style="border-top:2px solid #38bdf8; margin-top:12px; padding-top:14px; font-size:1.1rem;">
+    <span>Total lună:</span><span id="myMonthTotal">—</span>
+  </div>
+</div>
 
 <div class="card hidden" id="adminCard" style="max-width:640px; margin-top:16px;">
   <div id="adminLogin">
@@ -76,6 +90,15 @@
     <button class="export-btn" id="adminLoginBtn">Intră</button>
   </div>
   <div id="adminPanel" class="hidden">
+    <div style="background:#0f172a; border-radius:12px; padding:16px; margin-bottom:16px;">
+      <div style="font-weight:700; margin-bottom:10px; color:#38bdf8;">➕ Adaugă / corectează o zi</div>
+      <input type="date" id="manualDate" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem; margin-bottom:10px;">
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <input type="time" id="manualSosire" style="flex:1; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem;">
+        <input type="time" id="manualPlecare" style="flex:1; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem;">
+      </div>
+      <button class="export-btn" id="manualSave" style="margin-top:0;">💾 Salvează ziua</button>
+    </div>
     <select id="monthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1rem; margin-bottom:12px;"></select>
     <div style="overflow-x:auto;">
       <table id="adminTable">
@@ -181,9 +204,83 @@ btnPlecare.addEventListener('click', async () => {
 refreshToday();
 
 // ================== ADMIN ==================
+document.getElementById('manualDate').max = todayId();
+document.getElementById('manualDate').value = todayId();
+
+document.getElementById('manualSave').addEventListener('click', async () => {
+  const dateVal = document.getElementById('manualDate').value;
+  const sosireVal = document.getElementById('manualSosire').value;
+  const plecareVal = document.getElementById('manualPlecare').value;
+  if (!dateVal) { alert('Alege o dată.'); return; }
+  if (!sosireVal && !plecareVal) { alert('Completează cel puțin o oră.'); return; }
+  const payload = { data: dateVal };
+  if (sosireVal) payload.sosire = sosireVal;
+  if (plecareVal) payload.plecare = plecareVal;
+  try {
+    await db.collection('pontaj').doc(dateVal).set(payload, { merge: true });
+    alert('Salvat pentru ' + dateVal + '.');
+    document.getElementById('manualSosire').value = '';
+    document.getElementById('manualPlecare').value = '';
+    await loadAdminData();
+  } catch(e) { alert('Eroare: ' + e.message); }
+});
+
 document.getElementById('openAdmin').addEventListener('click', () => {
   document.getElementById('adminCard').classList.toggle('hidden');
 });
+
+document.getElementById('openMyHours').addEventListener('click', async () => {
+  const card = document.getElementById('myHoursCard');
+  card.classList.toggle('hidden');
+  if (!card.classList.contains('hidden')) await loadMyHours();
+});
+
+let myAllRows = [];
+
+async function loadMyHours(){
+  const snap = await db.collection('pontaj').get();
+  myAllRows = [];
+  snap.forEach(doc => {
+    const d = doc.data();
+    myAllRows.push({ data: d.data || doc.id, sosire: d.sosire || '', plecare: d.plecare || '' });
+  });
+  myAllRows.sort((a, b) => b.data.localeCompare(a.data));
+
+  const months = [...new Set(myAllRows.map(r => monthOf(r.data)))].filter(Boolean).sort().reverse();
+  const select = document.getElementById('myMonthFilter');
+  const prevSelected = select.value;
+  if (months.length === 0) {
+    select.innerHTML = '<option value="">Fără date</option>';
+  } else {
+    select.innerHTML = months.map(ym => `<option value="${ym}">${monthLabel(ym)}</option>`).join('');
+    select.value = months.includes(prevSelected) ? prevSelected : (months.includes(monthOf(todayId())) ? monthOf(todayId()) : months[0]);
+  }
+  renderMyTable();
+}
+
+function renderMyTable(){
+  const ym = document.getElementById('myMonthFilter').value;
+  const rows = myAllRows.filter(r => monthOf(r.data) === ym);
+  const tbody = document.querySelector('#myTable tbody');
+  tbody.innerHTML = rows.map(r =>
+    `<tr><td>${r.data}</td><td>${r.sosire||'—'}</td><td>${r.plecare||'—'}</td><td>${calcOre(r.sosire,r.plecare)}</td></tr>`
+  ).join('');
+
+  let totalMins = 0;
+  rows.forEach(r => {
+    if (r.sosire && r.plecare) {
+      const [h1,m1] = r.sosire.split(':').map(Number);
+      const [h2,m2] = r.plecare.split(':').map(Number);
+      let mins = (h2*60+m2) - (h1*60+m1);
+      if (mins < 0) mins += 24*60;
+      totalMins += mins;
+    }
+  });
+  const h = Math.floor(totalMins/60), m = totalMins%60;
+  document.getElementById('myMonthTotal').textContent = rows.length ? `${h}h ${pad(m)}m` : '—';
+}
+
+document.getElementById('myMonthFilter').addEventListener('change', renderMyTable);
 
 document.getElementById('adminLoginBtn').addEventListener('click', async () => {
   const val = document.getElementById('adminPass').value;

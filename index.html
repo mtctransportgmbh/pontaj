@@ -9,15 +9,15 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
     margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #0f172a; color: #f1f5f9; min-height: 100vh;
+    background: #f1f5f9; color: #0f172a; min-height: 100vh;
     display: flex; flex-direction: column; align-items: center; padding: 24px 16px;
   }
-  .welcome { font-size: 1.3rem; font-weight: 600; color: #38bdf8; margin-top: 8px; }
-  .clock { font-size: 3rem; font-weight: 700; margin-top: 4px; letter-spacing: 1px; }
-  .date { font-size: 1.1rem; color: #94a3b8; margin-bottom: 32px; text-transform: capitalize; }
+  .welcome { font-size: 1.3rem; font-weight: 600; color: #0284c7; margin-top: 8px; }
+  .clock { font-size: 3rem; font-weight: 700; margin-top: 4px; letter-spacing: 1px; color: #0f172a; }
+  .date { font-size: 1.1rem; color: #64748b; margin-bottom: 32px; text-transform: capitalize; }
   .card {
-    width: 100%; max-width: 420px; background: #1e293b; border-radius: 20px;
-    padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    width: 100%; max-width: 420px; background: #ffffff; border-radius: 20px;
+    padding: 24px; box-shadow: 0 10px 30px rgba(15,23,42,.08); border: 1px solid #e2e8f0;
   }
   .btn {
     width: 100%; padding: 28px; border: none; border-radius: 16px; font-size: 1.4rem;
@@ -25,30 +25,30 @@
     display: flex; align-items: center; justify-content: center; gap: 10px;
   }
   .btn:active { transform: scale(0.97); }
-  .btn-sosire { background: #22c55e; color: #052e16; }
-  .btn-plecare { background: #ef4444; color: #450a0a; }
-  .btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+  .btn-sosire { background: #22c55e; color: #ffffff; }
+  .btn-plecare { background: #ef4444; color: #ffffff; }
+  .btn:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
   .status-line {
     display: flex; justify-content: space-between; padding: 10px 4px;
-    border-top: 1px solid #334155; font-size: 1rem;
+    border-top: 1px solid #e2e8f0; font-size: 1rem;
   }
-  .status-line span:last-child { font-weight: 700; color: #38bdf8; }
-  .msg { text-align: center; margin-top: 16px; color: #94a3b8; font-size: .9rem; }
+  .status-line span:last-child { font-weight: 700; color: #0284c7; }
+  .msg { text-align: center; margin-top: 16px; color: #64748b; font-size: .9rem; }
   .admin-link {
-    margin-top: 28px; color: #475569; font-size: .8rem; background: none;
+    margin-top: 28px; color: #64748b; font-size: .8rem; background: none;
     border: none; text-decoration: underline; cursor: pointer;
   }
   .hidden { display: none; }
   table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: .85rem; }
-  th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #334155; }
-  th { color: #94a3b8; font-weight: 600; }
+  th, td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  th { color: #64748b; font-weight: 600; }
   .export-btn {
-    width: 100%; padding: 16px; border: none; border-radius: 12px; background: #38bdf8;
-    color: #082f49; font-weight: 700; font-size: 1rem; margin-top: 16px; cursor: pointer;
+    width: 100%; padding: 16px; border: none; border-radius: 12px; background: #0284c7;
+    color: #ffffff; font-weight: 700; font-size: 1rem; margin-top: 16px; cursor: pointer;
   }
   input[type=password] {
-    width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #334155;
-    background: #0f172a; color: #f1f5f9; font-size: 1rem; margin-bottom: 12px;
+    width: 100%; padding: 14px; border-radius: 10px; border: 1px solid #cbd5e1;
+    background: #f8fafc; color: #0f172a; font-size: 1rem; margin-bottom: 12px;
   }
 </style>
 </head>
@@ -72,7 +72,7 @@
 <button class="admin-link" id="openAdmin">admin</button>
 
 <div class="card hidden" id="myHoursCard" style="max-width:640px; margin-top:16px;">
-  <select id="myMonthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1rem; margin-bottom:12px;"></select>
+  <select id="myMonthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1rem; margin-bottom:12px;"></select>
   <div style="overflow-x:auto;">
     <table id="myTable">
       <thead><tr><th>Data</th><th>Sosire</th><th>Plecare</th><th>Total ore</th></tr></thead>
@@ -90,16 +90,16 @@
     <button class="export-btn" id="adminLoginBtn">Intră</button>
   </div>
   <div id="adminPanel" class="hidden">
-    <div style="background:#0f172a; border-radius:12px; padding:16px; margin-bottom:16px;">
+    <div style="background:#f8fafc; border-radius:12px; padding:16px; margin-bottom:16px;">
       <div style="font-weight:700; margin-bottom:10px; color:#38bdf8;">➕ Adaugă / corectează o zi</div>
-      <input type="date" id="manualDate" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem; margin-bottom:10px;">
+      <input type="date" id="manualDate" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1rem; margin-bottom:10px;">
       <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <input type="time" id="manualSosire" style="flex:1; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem;">
-        <input type="time" id="manualPlecare" style="flex:1; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:#f1f5f9; font-size:1rem;">
+        <input type="time" id="manualSosire" style="flex:1; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1rem;">
+        <input type="time" id="manualPlecare" style="flex:1; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1rem;">
       </div>
       <button class="export-btn" id="manualSave" style="margin-top:0;">💾 Salvează ziua</button>
     </div>
-    <select id="monthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#0f172a; color:#f1f5f9; font-size:1rem; margin-bottom:12px;"></select>
+    <select id="monthFilter" style="width:100%; padding:12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1rem; margin-bottom:12px;"></select>
     <div style="overflow-x:auto;">
       <table id="adminTable">
         <thead><tr><th>Data</th><th>Sosire</th><th>Plecare</th><th>Total ore</th></tr></thead>
@@ -107,7 +107,7 @@
       </table>
     </div>
     <button class="export-btn" id="downloadExcel">⬇️ Descarcă Excel</button>
-    <button class="export-btn" id="resetAll" style="background:#ef4444; color:#450a0a;">🗑️ Șterge tot istoricul</button>
+    <button class="export-btn" id="resetAll" style="background:#ef4444; color:#ffffff;">🗑️ Șterge tot istoricul</button>
   </div>
 </div>
 

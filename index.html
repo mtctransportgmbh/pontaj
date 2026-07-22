@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pontaj</title>
-<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Pontaj%22,%22display%22:%22standalone%22}">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0284c7">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
@@ -119,6 +122,11 @@ window.addEventListener('error', (e) => {
   const m = document.getElementById('msg');
   if (m) { m.textContent = '⚠️ Eroare: ' + e.message; m.style.color = '#ef4444'; }
 });
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 
 // ================== CONFIGURARE FIREBASE ==================
 // Înlocuiește cu config-ul din proiectul TĂU Firebase nou

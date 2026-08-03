@@ -196,7 +196,7 @@ async function refreshToday(){
 btnSosire.addEventListener('click', async () => {
   btnSosire.disabled = true;
   try {
-    await db.collection('pontaj').doc(todayId()).set({ sosire: timeNow(), data: todayId() }, { merge: true });
+    await db.collection('pontaj').doc(todayId()).set({ sosire: '07:00', data: todayId() }, { merge: true });
     await refreshToday();
   } catch(e) { alert('Eroare: ' + e.message); btnSosire.disabled = false; }
 });

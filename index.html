@@ -62,6 +62,10 @@
 <div class="date" id="dateLabel">-</div>
 
 <div class="card" id="mainCard">
+  <div id="sosireWrap">
+    <label for="oraSosire" style="display:block; font-size:.9rem; color:#64748b; margin-bottom:6px;">Ora de sosire</label>
+    <input type="time" id="oraSosire" value="07:00" style="width:100%; padding:14px; border-radius:12px; border:1px solid #cbd5e1; background:#f8fafc; color:#0f172a; font-size:1.4rem; font-weight:600; text-align:center; margin-bottom:12px;">
+  </div>
   <button class="btn btn-sosire" id="btnSosire">✅ SOSIRE</button>
   <button class="btn btn-plecare" id="btnPlecare" disabled>🚪 PLECARE</button>
 
@@ -183,6 +187,7 @@ async function refreshToday(){
   valSosire.textContent = data.sosire || '—';
   valPlecare.textContent = data.plecare || '—';
   btnSosire.disabled = !!data.sosire;
+  document.getElementById('sosireWrap').classList.toggle('hidden', !!data.sosire);
   btnPlecare.disabled = !data.sosire || !!data.plecare;
   if (data.sosire && data.plecare) {
     msg.textContent = 'Pontaj complet pentru azi. Pe mâine! 👋';
@@ -194,9 +199,11 @@ async function refreshToday(){
 }
 
 btnSosire.addEventListener('click', async () => {
+  const ora = document.getElementById('oraSosire').value;
+  if (!ora) { alert('Alege ora de sosire.'); return; }
   btnSosire.disabled = true;
   try {
-    await db.collection('pontaj').doc(todayId()).set({ sosire: '07:00', data: todayId() }, { merge: true });
+    await db.collection('pontaj').doc(todayId()).set({ sosire: ora, data: todayId() }, { merge: true });
     await refreshToday();
   } catch(e) { alert('Eroare: ' + e.message); btnSosire.disabled = false; }
 });
